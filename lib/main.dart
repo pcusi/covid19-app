@@ -11,6 +11,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
         title: 'Flutter Demo',
         home: Scaffold(
+          resizeToAvoidBottomInset: false,
           appBar: AppBar(
             backgroundColor: Color(0xffDA071E),
             centerTitle: true,
@@ -20,7 +21,7 @@ class MyApp extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          body: NewsPage(),
+          body: SingleChildScrollView(child: NewsPage()),
         ));
   }
 }

@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:covid19pe_app/models/Cases.dart';
+import 'package:covid19pe_app/providers/notifications.dart';
 import 'package:covid19pe_app/widgets/card_widget.dart';
 import 'package:covid19pe_app/widgets/text_customize.dart';
 import 'package:flutter/material.dart';
@@ -20,9 +23,10 @@ class NewsPage extends StatefulWidget {
 
 class _NewsPageState extends State<NewsPage> {
   final page = 1;
+  final _notifications = new NotificationsProvider();
 
   Future<List<News>> getNews() async {
-    final url = 'http://10.0.2.2:4000/api/v1/news/$page';
+    final url = 'https://covid19pe.herokuapp.com/api/v1/news/$page';
 
     final response = await http.get(url);
 
@@ -56,6 +60,14 @@ class _NewsPageState extends State<NewsPage> {
   void initState() {
     super.initState();
     getNews();
+    getDeviceToken();
+  }
+
+  getDeviceToken() async {
+    if (Platform.isAndroid) {
+      _notifications.initNotifications();
+      await _notifications.saveDeviceToken();
+    }
   }
 
   @override
@@ -101,16 +113,23 @@ class _NewsPageState extends State<NewsPage> {
                         fontWeight: FontWeight.bold,
                       ),
                       TextCustomize(
-                        text: 'Casos críticos:' +
+                        text: 'Casos críticos: ' +
                             snapshot.data.critical.toString(),
                         size: 18.0,
                         color: Color(0xffDA071E),
                         fontWeight: FontWeight.bold,
                       ),
+                      TextCustomize(
+                        text: 'Fallecidos: ' +
+                            snapshot.data.deaths.toString(),
+                        size: 18.0,
+                        color: Colors.red[900],
+                        fontWeight: FontWeight.bold,
+                      ),
                     ],
                   );
                 } else {
-                  return CircularProgressIndicator();
+                  return Center(child: CircularProgressIndicator());
                 }
               },
             ),
@@ -127,61 +146,66 @@ class _NewsPageState extends State<NewsPage> {
             FutureBuilder<List<News>>(
               future: getNews(),
               builder: (context, snapshot) {
-                return Container(
-                  width: double.infinity,
-                  height: size.height * .8 - 125,
-                  child: ListView.builder(
-                    itemCount: snapshot.data.length,
-                    itemBuilder: (context, index) {
-                      final news = snapshot.data[index];
+                if (snapshot.hasData) {
+                  return Container(
+                    width: double.infinity,
+                    height: size.height * .8,
+                    child: ListView.builder(
+                      itemCount: snapshot.data.length,
+                      itemBuilder: (context, index) {
+                        final news = snapshot.data[index];
 
-                      final timestamps = int.parse(news.createdAt);
+                        final timestamps = int.parse(news.createdAt);
 
-                      final newDate = DateTime.fromMillisecondsSinceEpoch(
-                          timestamps * 1000);
+                        final newDate = DateTime.fromMillisecondsSinceEpoch(
+                            timestamps * 1000);
 
-                      final dateAgo = timeago.format(newDate, locale: 'es');
+                        final dateAgo = timeago.format(newDate, locale: 'es');
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 32.0),
-                        child: CardWidget(
-                          one: TextCustomize(
-                            text: dateAgo.toString(),
-                            color: Colors.white,
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 32.0),
+                          child: CardWidget(
+                            one: TextCustomize(
+                              text: dateAgo.toString(),
+                              color: Colors.white,
+                              size: 7.0,
+                            ),
+                            two: TextCustomize(
+                                text: newDate.toString(),
+                                color: Colors.white,
+                                size: 7.0),
+                            three: TextCustomize(
+                              text: news.title,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              size: 18.0,
+                            ),
+                            four: TextCustomize(
+                              text: news.description,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              size: 15.0,
+                            ),
+                            five: Linkify(
+                              onOpen: (link) async {
+                                if (await canLaunch(link.url)) {
+                                  await launch(link.url);
+                                } else {
+                                  throw 'Could not launch $link';
+                                }
+                              },
+                              text: 'Fuente: ' + news.link,
+                              style: TextStyle(color: Colors.white),
+                              linkStyle: TextStyle(color: Colors.blue),
+                            ),
                           ),
-                          two: TextCustomize(
-                            text: newDate.toString(),
-                            color: Colors.white,
-                          ),
-                          three: TextCustomize(
-                            text: news.title,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            size: 18.0,
-                          ),
-                          four: TextCustomize(
-                            text: news.description,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            size: 15.0,
-                          ),
-                          five: Linkify(
-                            onOpen: (link) async {
-                              if (await canLaunch(link.url)) {
-                                await launch(link.url);
-                              } else {
-                                throw 'Could not launch $link';
-                              }
-                            },
-                            text: 'Fuente: ' + news.link,
-                            style: TextStyle(color: Colors.white),
-                            linkStyle: TextStyle(color: Colors.blue),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
+                        );
+                      },
+                    ),
+                  );
+                } else {
+                  return Center(child: CircularProgressIndicator());
+                }
               },
             ),
           ],
